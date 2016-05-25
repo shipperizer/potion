@@ -7,8 +7,8 @@ from flask import current_app
 # from sqlalchemy.orm.attributes import ScalarObjectAttributeImpl
 # from sqlalchemy.orm.collections import InstrumentedList
 # from sqlalchemy.orm.exc import NoResultFound
-from cassandra.cqlengine.query import DoesNotExist, MultipleObjectsReturned
-from cassandra.cqlengine import columns
+from cassandra.cqlengine.query import DoesNotExist, MultipleObjectsReturned, LWTException
+from cassandra.cqlengine import columns, ValidationError
 
 from flask_potion import fields
 from flask_potion.exceptions import ItemNotFound, DuplicateKey, BackendConflict
@@ -206,7 +206,6 @@ class CQLEngineManager(RelationalManager):
             return query.first()
         except DoesNotExist:
             raise IndexError()
-# ==========================================================================================
     def create(self, properties, commit=True):
         # noinspection properties
         item = self.model()
@@ -216,25 +215,20 @@ class CQLEngineManager(RelationalManager):
 
         before_create.send(self.resource, item=item)
 
-        session = self._get_session()
-
-        try:
-            session.add(item)
-            if commit:
-                session.commit()
-        except IntegrityError as e:
-            session.rollback()
-
-            if hasattr(e.orig, 'pgcode'):
-                if e.orig.pgcode == "23505":  # duplicate key
-                    raise DuplicateKey(detail=e.orig.diag.message_detail)
-
-            if current_app.debug:
-                raise BackendConflict(debug_info=dict(statement=e.statement, params=e.params))
-            raise BackendConflict()
+        if commit:
+            try:
+                item.if_not_exists().save()
+            except LWTException as e:
+                raise DuplicateKey(detail=e.existing)
+            except ValidationError as e:
+                if current_app.debug:
+                    raise BackendConflict(debug_info=dict(statement=e.statement, params=e.params))
+                raise BackendConflict()
 
         after_create.send(self.resource, item=item)
         return item
+
+# ==========================================================================================
 
     def update(self, item, changes, commit=True):
         session = self._get_session()

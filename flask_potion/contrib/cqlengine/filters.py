@@ -1,198 +1,158 @@
-# from sqlalchemy import and_
-# from flask_potion import fields
-# import flask_potion.filters as filters
-#
-#
-# class SQLAlchemyBaseFilter(filters.BaseFilter):
-#     def __init__(self, name, field=None, attribute=None, column=None):
-#         super(SQLAlchemyBaseFilter, self).__init__(name, field=field, attribute=attribute)
-#         self.column = column
-#
-#     @classmethod
-#     def apply(cls, query, conditions):
-#         expressions = [condition.filter.expression(condition.value) for condition in conditions]
-#         if len(expressions) == 1:
-#             return query.filter(expressions[0])
-#         return query.filter(and_(*expressions))
-#
-#
-# class EqualFilter(SQLAlchemyBaseFilter, filters.EqualFilter):
-#     def expression(self, value):
-#         return self.column == value
-#
-#
-# class NotEqualFilter(SQLAlchemyBaseFilter, filters.NotEqualFilter):
-#     def expression(self, value):
-#         return self.column != value
-#
-#
-# class LessThanFilter(SQLAlchemyBaseFilter, filters.LessThanFilter):
-#     def expression(self, value):
-#         return self.column < value
-#
-#
-# class LessThanEqualFilter(SQLAlchemyBaseFilter, filters.LessThanEqualFilter):
-#     def expression(self, value):
-#         return self.column <= value
-#
-#
-# class GreaterThanFilter(SQLAlchemyBaseFilter, filters.GreaterThanFilter):
-#     def expression(self, value):
-#         return self.column > value
-#
-#
-# class GreaterThanEqualFilter(SQLAlchemyBaseFilter, filters.GreaterThanEqualFilter):
-#     def expression(self, value):
-#         return self.column >= value
-#
-#
-# class InFilter(SQLAlchemyBaseFilter, filters.InFilter):
-#     def expression(self, values):
-#         return self.column.in_(values) if len(values) else False
-#
-#
-# class ContainsFilter(SQLAlchemyBaseFilter, filters.ContainsFilter):
-#     def expression(self, value):
-#         return self.column.contains(value)
-#
-#
-# class StringContainsFilter(SQLAlchemyBaseFilter, filters.StringContainsFilter):
+from flask_potion import fields
+import flask_potion.filters as filters
+
+
+class CQLEngineBaseFilter(filters.BaseFilter):
+    def __init__(self, name, field=None, attribute=None, column=None):
+        super(CQLEngineBaseFilter, self).__init__(name, field=field, attribute=attribute)
+        self.column = column
+
+
+class EqualFilter(CQLEngineBaseFilter, filters.EqualFilter):
+    def expression(self, query, value):
+        return query.filter(self.column == value).allow_filtering()
+
+
+class LessThanFilter(CQLEngineBaseFilter, filters.LessThanFilter):
+    def expression(self, query, value):
+        return query.filter(self.column < value).allow_filtering()
+
+
+class LessThanEqualFilter(CQLEngineBaseFilter, filters.LessThanEqualFilter):
+    def expression(self, query, value):
+        return query.filter(self.column <= value).allow_filtering()
+
+
+class GreaterThanFilter(CQLEngineBaseFilter, filters.GreaterThanFilter):
+    def expression(self, query, value):
+        return query.filter(self.column > value).allow_filtering()
+
+
+class GreaterThanEqualFilter(CQLEngineBaseFilter, filters.GreaterThanEqualFilter):
+    def expression(self, query, value):
+        return query.filter(self.column >= value).allow_filtering()
+
+
+class InFilter(CQLEngineBaseFilter, filters.InFilter):
+    def expression(self, query, values):
+        return query.filter(self.column.in_(values)).allow_filtering()
+
+
+class ContainsFilter(CQLEngineBaseFilter, filters.ContainsFilter):
+    def expression(self, query, value):
+        return query.filter(self.column.contains(value)).allow_filtering()
+
+
+# class StringContainsFilter(CQLEngineBaseFilter, filters.StringContainsFilter):
 #     def expression(self, value):
 #         return self.column.like('%' + value.replace('%', '\\%') + '%')
 #
 #
-# class StringIContainsFilter(SQLAlchemyBaseFilter, filters.StringIContainsFilter):
+# class StringIContainsFilter(CQLEngineBaseFilter, filters.StringIContainsFilter):
 #     def expression(self, value):
 #         return self.column.ilike('%' + value.replace('%', '\\%') + '%')
 #
 #
-# class StartsWithFilter(SQLAlchemyBaseFilter, filters.StartsWithFilter):
+# class StartsWithFilter(CQLEngineBaseFilter, filters.StartsWithFilter):
 #     def expression(self, value):
 #         return self.column.startswith(value.replace('%', '\\%'))
 #
 #
-# class IStartsWithFilter(SQLAlchemyBaseFilter, filters.IStartsWithFilter):
+# class IStartsWithFilter(CQLEngineBaseFilter, filters.IStartsWithFilter):
 #     def expression(self, value):
 #         return self.column.ilike(value.replace('%', '\\%') + '%')
 #
 #
-# class EndsWithFilter(SQLAlchemyBaseFilter, filters.EndsWithFilter):
+# class EndsWithFilter(CQLEngineBaseFilter, filters.EndsWithFilter):
 #     def expression(self, value):
 #         return self.column.endswith(value.replace('%', '\\%'))
 #
 #
-# class IEndsWithFilter(SQLAlchemyBaseFilter, filters.IEndsWithFilter):
+# class IEndsWithFilter(CQLEngineBaseFilter, filters.IEndsWithFilter):
 #     def expression(self, value):
 #         return self.column.ilike('%' + value.replace('%', '\\%'))
 #
 #
-# class DateBetweenFilter(SQLAlchemyBaseFilter, filters.DateBetweenFilter):
+# class DateBetweenFilter(CQLEngineBaseFilter, filters.DateBetweenFilter):
 #     def expression(self, value):
 #         return self.column.between(value[0], value[1])
 #
 #
-# FILTER_NAMES = (
-#     (EqualFilter, None),
-#     (EqualFilter, 'eq'),
-#     (NotEqualFilter, 'ne'),
-#     (LessThanFilter, 'lt'),
-#     (LessThanEqualFilter, 'lte'),
-#     (GreaterThanFilter, 'gt'),
-#     (GreaterThanEqualFilter, 'gte'),
-#     (InFilter, 'in'),
-#     (ContainsFilter, 'contains'),
-#     (StringContainsFilter, 'contains'),
-#     (StringIContainsFilter, 'icontains'),
-#     (StartsWithFilter, 'startswith'),
-#     (IStartsWithFilter, 'istartswith'),
-#     (EndsWithFilter, 'endswith'),
-#     (IEndsWithFilter, 'iendswith'),
-#     (DateBetweenFilter, 'between')
-# )
-#
-#
-# FILTERS_BY_TYPE = (
-#     (fields.Boolean, (
-#         EqualFilter,
-#         NotEqualFilter,
-#         InFilter
-#     )),
-#     (fields.Integer, (
-#         EqualFilter,
-#         NotEqualFilter,
-#         LessThanFilter,
-#         LessThanEqualFilter,
-#         GreaterThanFilter,
-#         GreaterThanEqualFilter,
-#         InFilter,
-#     )),
-#     (fields.Number, (
-#         EqualFilter,
-#         NotEqualFilter,
-#         LessThanFilter,
-#         LessThanEqualFilter,
-#         GreaterThanFilter,
-#         GreaterThanEqualFilter,
-#         InFilter,
-#     )),
-#     (fields.String, (
-#         EqualFilter,
-#         NotEqualFilter,
-#         StringContainsFilter,
-#         StringIContainsFilter,
-#         StartsWithFilter,
-#         IStartsWithFilter,
-#         EndsWithFilter,
-#         IEndsWithFilter,
-#         InFilter,
-#     )),
-#     (fields.Date, (
-#         EqualFilter,
-#         NotEqualFilter,
-#         LessThanFilter,
-#         LessThanEqualFilter,
-#         GreaterThanFilter,
-#         GreaterThanEqualFilter,
-#         DateBetweenFilter,
-#         InFilter,
-#     )),
-#     (fields.DateTime, (
-#         EqualFilter,
-#         NotEqualFilter,
-#         LessThanFilter,
-#         LessThanEqualFilter,
-#         GreaterThanFilter,
-#         GreaterThanEqualFilter,
-#         DateBetweenFilter,
-#     )),
-#     (fields.DateString, (
-#         EqualFilter,
-#         NotEqualFilter,
-#         LessThanFilter,
-#         LessThanEqualFilter,
-#         GreaterThanFilter,
-#         GreaterThanEqualFilter,
-#         DateBetweenFilter,
-#         InFilter,
-#     )),
-#     (fields.DateTimeString, (
-#         EqualFilter,
-#         NotEqualFilter,
-#         LessThanFilter,
-#         LessThanEqualFilter,
-#         GreaterThanFilter,
-#         GreaterThanEqualFilter,
-#         DateBetweenFilter,
-#     )),
-#     (fields.Array, (
-#         ContainsFilter,
-#     )),
-#     (fields.ToOne, (
-#         EqualFilter,
-#         NotEqualFilter,
-#         InFilter,
-#     )),
-#     (fields.ToMany, (
-#         ContainsFilter,
-#     )),
-# )
+
+FILTER_NAMES = (
+    (EqualFilter, None),
+    (EqualFilter, 'eq'),
+    (LessThanFilter, 'lt'),
+    (LessThanEqualFilter, 'lte'),
+    (GreaterThanFilter, 'gt'),
+    (GreaterThanEqualFilter, 'gte'),
+    (InFilter, 'in'),
+    # (ContainsFilter, 'contains'),
+)
+FILTERS_BY_TYPE = (
+    (fields.Boolean, (
+        EqualFilter,
+        InFilter
+    )),
+    (fields.Integer, (
+        EqualFilter,
+        LessThanFilter,
+        LessThanEqualFilter,
+        GreaterThanFilter,
+        GreaterThanEqualFilter,
+        InFilter,
+    )),
+    (fields.Number, (
+        EqualFilter,
+        LessThanFilter,
+        LessThanEqualFilter,
+        GreaterThanFilter,
+        GreaterThanEqualFilter,
+        InFilter,
+    )),
+    (fields.String, (
+        EqualFilter,
+        # StringContainsFilter,
+        # StringIContainsFilter,
+        # StartsWithFilter,
+        # IStartsWithFilter,
+        # EndsWithFilter,
+        # IEndsWithFilter,
+        InFilter,
+    )),
+    (fields.Date, (
+        EqualFilter,
+        LessThanFilter,
+        LessThanEqualFilter,
+        GreaterThanFilter,
+        GreaterThanEqualFilter,
+        # DateBetweenFilter,
+        InFilter,
+    )),
+    (fields.DateTime, (
+        EqualFilter,
+        LessThanFilter,
+        LessThanEqualFilter,
+        GreaterThanFilter,
+        GreaterThanEqualFilter,
+        # DateBetweenFilter,
+    )),
+    (fields.DateString, (
+        EqualFilter,
+        LessThanFilter,
+        LessThanEqualFilter,
+        GreaterThanFilter,
+        GreaterThanEqualFilter,
+        InFilter,
+    )),
+    (fields.DateTimeString, (
+        EqualFilter,
+        LessThanFilter,
+        LessThanEqualFilter,
+        GreaterThanFilter,
+        GreaterThanEqualFilter,
+    )),
+    (fields.Array, (
+        ContainsFilter,
+    ))
+)

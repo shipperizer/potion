@@ -1,22 +1,12 @@
-from flask import current_app
-# from flask_sqlalchemy import Pagination as SAPagination, get_state
-# from sqlalchemy import String, or_, and_
-# from sqlalchemy.dialects import postgresql
-# from sqlalchemy.exc import IntegrityError
-# from sqlalchemy.orm import class_mapper, aliased
-# from sqlalchemy.orm.attributes import ScalarObjectAttributeImpl
-# from sqlalchemy.orm.collections import InstrumentedList
-# from sqlalchemy.orm.exc import NoResultFound
-from cassandra.cqlengine.query import DoesNotExist, MultipleObjectsReturned, LWTException
+from cassandra.cqlengine.query import DoesNotExist, LWTException
 from cassandra.cqlengine import columns, ValidationError
-
+from flask import current_app
 from flask_potion import fields
 from flask_potion.exceptions import ItemNotFound, DuplicateKey, BackendConflict
-from flask_potion.instances import Pagination
 from flask_potion.manager import RelationalManager
-from flask_potion.signals import before_add_to_relation, after_add_to_relation, before_remove_from_relation, \
-    after_remove_from_relation, before_create, after_create, before_update, after_update, before_delete, after_delete
+from flask_potion.signals import before_create, after_create, before_update, after_update, before_delete, after_delete
 from flask_potion.utils import get_value
+from flask_potion.contrib.cqlengine.filters import FILTER_NAMES, FILTERS_BY_TYPE
 
 
 class CQLEngineManager(RelationalManager):
@@ -26,9 +16,8 @@ class CQLEngineManager(RelationalManager):
     # Expects that ``Meta.model`` contains a CQLEngine declarative model.
 
     """
-    # FILTER_NAMES = FILTER_NAMES
-    # FILTERS_BY_TYPE = FILTERS_BY_TYPE
-    # PAGINATION_TYPES = (Pagination, SAPagination)
+    FILTER_NAMES = FILTER_NAMES
+    FILTERS_BY_TYPE = FILTERS_BY_TYPE
 
     def __init__(self, resource, model):
         super(CQLEngineManager, self).__init__(resource, model)
@@ -91,6 +80,7 @@ class CQLEngineManager(RelationalManager):
 
     @staticmethod
     def _get_field_from_cassandra_type(db_type):
+        # http://datastax.github.io/python-driver/getting_started.html#type-conversions
         try:
             return {
                 'boolean': bool,
@@ -128,23 +118,17 @@ class CQLEngineManager(RelationalManager):
 
         return field_class(*args, io=io, attribute=attribute, **kwargs)
 
-    # def _init_filter(self, filter_class, name, field, attribute):
-    #     return filter_class(name,
-    #                         field=field,
-    #                         attribute=field.attribute or attribute,
-    #                         column=getattr(self.model, field.attribute or attribute))
-    #
-    # def _is_sortable_field(self, field):
-    #     if super(SQLAlchemyManager, self)._is_sortable_field(field):
-    #         return True
-    #     elif isinstance(field, fields.ToOne):
-    #         return isinstance(field.target.manager, SQLAlchemyManager)
-    #     else:
-    #         return False
+    def _init_filter(self, filter_class, name, field, attribute):
+        return filter_class(name,
+                            field=field,
+                            attribute=field.attribute or attribute,
+                            column=getattr(self.model, field.attribute or attribute))
 
-    # @staticmethod
-    # def _get_session():
-    #     return get_state(current_app).db.session
+    def _is_sortable_field(self, field):
+        if super(CQLEngineManager, self)._is_sortable_field(field):
+            return True
+        else:
+            return False
 
     def _query(self):
         return self.model.objects
@@ -152,22 +136,12 @@ class CQLEngineManager(RelationalManager):
     def _query_filter(self, query, expression):
         return query.filter(expression)
 
-    # def _expression_for_ids(self, ids):
-    #     return self.id_column.in_(ids)
-    #
-    # def _or_expression(self, expressions):
-    #     if not expressions:
-    #         return True
-    #     if len(expressions) == 1:
-    #         return expressions[0]
-    #     return or_(*expressions)
-    #
-    # def _and_expression(self, expressions):
-    #     if not expressions:
-    #         return False
-    #     if len(expressions) == 1:
-    #         return expressions[0]
-    #     return and_(*expressions)
+    def _expression_for_condition(self, condition):
+        return condition.filter.expression(condition.value)
+
+    def _expression_for_ids(self, ids):
+        return self.id_column.in_(ids)
+
 
     def _query_filter_by_id(self, query, id):
         try:
@@ -180,11 +154,6 @@ class CQLEngineManager(RelationalManager):
 
         for field, attribute, reverse in sort:
             column = getattr(self.model, attribute)
-
-            # if isinstance(field, fields.ToOne):
-            #     target_alias = aliased(field.target.meta.model)
-            #     query = query.outerjoin(target_alias, column).reset_joinpoint()
-            #     column = getattr(target_alias, field.target.meta.sort_attribute or field.target.manager.id_attribute)
 
             order_clauses.append('-{}'.format(column) if reverse else column)
 
@@ -259,34 +228,3 @@ class CQLEngineManager(RelationalManager):
         item.delete()
 
         after_delete.send(self.resource, item=item)
-
-    # ==========================================================================================
-    def relation_instances(self, item, attribute, target_resource, page=None, per_page=None):
-        query = getattr(item, attribute)
-
-        if isinstance(query, InstrumentedList):
-            if page and per_page:
-                return Pagination.from_list(query, page, per_page)
-            return query
-
-        if page and per_page:
-            return self._query_get_paginated_items(query, page, per_page)
-
-        return self._query_get_all(query)
-
-    def relation_add(self, item, attribute, target_resource, target_item):
-        before_add_to_relation.send(self.resource, item=item, attribute=attribute, child=target_item)
-        getattr(item, attribute).append(target_item)
-        after_add_to_relation.send(self.resource, item=item, attribute=attribute, child=target_item)
-
-    def relation_remove(self, item, attribute, target_resource, target_item):
-        before_remove_from_relation.send(self.resource, item=item, attribute=attribute, child=target_item)
-        try:
-            getattr(item, attribute).remove(target_item)
-            after_remove_from_relation.send(self.resource, item=item, attribute=attribute, child=target_item)
-        except ValueError:
-            pass  # if the relation does not exist, do nothing
-
-    def commit(self):
-        session = self._get_session()
-        session.commit()

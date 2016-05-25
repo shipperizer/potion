@@ -206,6 +206,7 @@ class CQLEngineManager(RelationalManager):
             return query.first()
         except DoesNotExist:
             raise IndexError()
+
     def create(self, properties, commit=True):
         # noinspection properties
         item = self.model()
@@ -228,10 +229,7 @@ class CQLEngineManager(RelationalManager):
         after_create.send(self.resource, item=item)
         return item
 
-# ==========================================================================================
-
     def update(self, item, changes, commit=True):
-        session = self._get_session()
         actual_changes = {
             key: value for key, value in changes.items()
             if get_value(key, item, None) != value
@@ -244,15 +242,13 @@ class CQLEngineManager(RelationalManager):
                 setattr(item, key, value)
 
             if commit:
-                session.commit()
-        except IntegrityError as e:
-            session.rollback()
-
-            # XXX need some better way to detect postgres engine.
-            if hasattr(e.orig, 'pgcode'):
-                if e.orig.pgcode == '23505':  # duplicate key
-                    raise DuplicateKey(detail=e.orig.diag.message_detail)
-            raise
+                item.if_exists().save()
+        except LWTException:
+            raise IndexError()
+        except ValidationError as e:
+            if current_app.debug:
+                raise BackendConflict(debug_info=dict(statement=e.statement, params=e.params))
+            raise BackendConflict()
 
         after_update.send(self.resource, item=item, changes=actual_changes)
         return item
@@ -260,12 +256,11 @@ class CQLEngineManager(RelationalManager):
     def delete(self, item):
         before_delete.send(self.resource, item=item)
 
-        session = self._get_session()
-        session.delete(item)
-        session.commit()
+        item.delete()
 
         after_delete.send(self.resource, item=item)
 
+    # ==========================================================================================
     def relation_instances(self, item, attribute, target_resource, page=None, per_page=None):
         query = getattr(item, attribute)
 

@@ -191,7 +191,9 @@ class CQLEngineManager(RelationalManager):
         return query.order_by(*order_clauses)
 
     def _query_get_paginated_items(self, query, page, per_page):
-        return query.paginate(page=page, per_page=per_page)
+        # can't find a nice way to use pagination with cassandra driver
+        # therefore using splicing
+        return query.all()[per_page * (page - 1):per_page * page]
 
     def _query_get_all(self, query):
         return query.all()

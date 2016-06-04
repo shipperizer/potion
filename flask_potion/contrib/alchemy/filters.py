@@ -91,6 +91,11 @@ class DateBetweenFilter(SQLAlchemyBaseFilter, filters.DateBetweenFilter):
         return self.column.between(value[0], value[1])
 
 
+class AttrFilter(SQLAlchemyBaseFilter, filters.AttrFilter):
+    def expression(self, value):
+        return False
+
+
 FILTER_NAMES = (
     (EqualFilter, None),
     (EqualFilter, 'eq'),
@@ -107,7 +112,8 @@ FILTER_NAMES = (
     (IStartsWithFilter, 'istartswith'),
     (EndsWithFilter, 'endswith'),
     (IEndsWithFilter, 'iendswith'),
-    (DateBetweenFilter, 'between')
+    (DateBetweenFilter, 'between'),
+    (AttrFilter, 'attr'),
 )
 
 
@@ -191,8 +197,10 @@ FILTERS_BY_TYPE = (
         EqualFilter,
         NotEqualFilter,
         InFilter,
+        AttrFilter,
     )),
     (fields.ToMany, (
         ContainsFilter,
+        AttrFilter,
     )),
 )

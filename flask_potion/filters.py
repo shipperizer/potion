@@ -220,6 +220,42 @@ class DateBetweenFilter(BaseFilter):
         return before <= a <= after
 
 
+class AttrFilter(BaseFilter):
+    def _get_target(self):
+        if isinstance(self.field, ToOne):
+            return self.field.target
+        elif isinstance(self.field, ToMany):
+            return self.field.container.target
+        else:
+            raise NotImplemented()
+
+    def _get_relationship_fields(self):
+        relationship = self._get_target()
+        relationship_fields = relationship.schema.fields
+        # NOTE we do not want to use fields that are themselves relationship fields.
+        return {key: field for key, field in relationship_fields.items()
+                if not isinstance(field, (ToOne, ToMany))}
+
+    def _field_filters_schema(self, filters):
+        if len(filters) == 1:
+            return next(iter(filters.values())).request
+        else:
+            return {"anyOf": [filter.request for filter in filters.values()]}
+
+    def _schema(self):
+        filters = filters_for_fields(self._get_relationship_fields(), self._get_target().meta.filters)
+        return {
+            "type": "object",
+            "properties": {
+                name: self._field_filters_schema(field_filters)
+                for name, field_filters in filters.items()
+            }
+        }
+
+    def op(self, a, b):
+        raise NotImplemented()
+
+
 EQUALITY_FILTER_NAME = 'eq'
 
 FILTER_NAMES = (
@@ -239,6 +275,7 @@ FILTER_NAMES = (
     (EndsWithFilter, 'endswith'),
     (IEndsWithFilter, 'iendswith'),
     (DateBetweenFilter, 'between'),
+    (AttrFilter, 'attr'),
 )
 
 FILTERS_BY_TYPE = (
@@ -321,9 +358,11 @@ FILTERS_BY_TYPE = (
         EqualFilter,
         NotEqualFilter,
         InFilter,
+        AttrFilter,
     )),
     (ToMany, (
         ContainsFilter,
+        AttrFilter,
     )),
 )
 

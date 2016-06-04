@@ -1,4 +1,4 @@
-from sqlalchemy import and_
+from sqlalchemy import and_, inspect
 from flask_potion import fields
 import flask_potion.filters as filters
 
@@ -92,7 +92,26 @@ class DateBetweenFilter(SQLAlchemyBaseFilter, filters.DateBetweenFilter):
 
 
 class AttrFilter(SQLAlchemyBaseFilter, filters.AttrFilter):
+
+    def __init__(self, name, field=None, attribute=None, column=None):
+        super(SQLAlchemyBaseFilter, self).__init__(name, field=field, attribute=attribute)
+        # using column as a dict
+        meta = self._get_target().meta
+        self.columns = self._init_subfilters(meta) or {}
+
+    def _init_subfilters(self, meta):
+        model = meta.model or inspect(column).mapper.class_
+        fields = self._get_relationship_fields()
+        columns = {c: {} for c in fields.keys()}
+        all_filters = filters.filters_for_fields(fields, meta.filters, FILTER_NAMES, FILTERS_BY_TYPE)
+        for attr, filters_dict in all_filters.items():
+            for name, filter_class in filters_dict.items():
+                # attr must be a key of column dict as name of the relationship fields
+                columns[attr][name] = filter_class(name, field=fields[attr], column=getattr(model, attr))
+        return columns
+
     def expression(self, value):
+        import ipdb;ipdb.set_trace()
         return False
 
 

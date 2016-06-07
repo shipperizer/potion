@@ -1,6 +1,6 @@
 from flask import current_app
 from flask_sqlalchemy import Pagination as SAPagination, get_state
-from sqlalchemy import String, or_, and_, inspect
+from sqlalchemy import String, or_, and_
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import class_mapper, aliased
@@ -116,25 +116,11 @@ class SQLAlchemyManager(RelationalManager):
 
         return field_class(*args, io=io, attribute=attribute, **kwargs)
 
-    def _check_relation_attribute(self, attribute):
-        # checking if the attribute fits the format relation__field, like in django orm
-        return '__' in attribute
-
-    def _get_relation_attribute_column(self, attribute):
-        rel_model, rel_attr = attribute.split('__')
-        model = inspect(self.model).relationships[rel_model].mapper.class_
-        return getattr(model, rel_attr)
-
     def _init_filter(self, filter_class, name, field, attribute):
-        if field.attribute and self._check_relation_attribute(field.attribute):
-            column = self._get_relation_attribute_column(field.attribute)
-        else:
-            column = getattr(self.model, field.attribute or attribute)
-
         return filter_class(name,
                             field=field,
                             attribute=field.attribute or attribute,
-                            column=column)
+                            column=getattr(self.model, field.attribute or attribute))
 
     def _is_sortable_field(self, field):
         if super(SQLAlchemyManager, self)._is_sortable_field(field):

@@ -221,20 +221,13 @@ class DateBetweenFilter(BaseFilter):
 
 
 class AttrFilter(BaseFilter):
-    def _get_target(self):
+    def get_target_resource(self):
         if isinstance(self.field, ToOne):
             return self.field.target
         elif isinstance(self.field, ToMany):
             return self.field.container.target
         else:
             raise NotImplemented()
-
-    def _get_relationship_fields(self):
-        relationship = self._get_target()
-        relationship_fields = relationship.schema.fields
-        # NOTE we do not want to use fields that are themselves relationship fields.
-        return {key: field for key, field in relationship_fields.items()
-                if not isinstance(field, (ToOne, ToMany))}
 
     def _field_filters_schema(self, filters):
         if len(filters) == 1:
@@ -243,7 +236,10 @@ class AttrFilter(BaseFilter):
             return {"anyOf": [filter.request for filter in filters.values()]}
 
     def _schema(self):
-        filters = filters_for_fields(self._get_relationship_fields(), self._get_target().meta.filters)
+        filters = {
+            key: filter for key, filter in self.get_target_resource().manager.filters.items()
+            if not isinstance(filter, AttrFilter)
+        }
         return {
             "type": "object",
             "properties": {
@@ -252,7 +248,14 @@ class AttrFilter(BaseFilter):
             }
         }
 
+    def _convert(self, value):
+        filters = self.get_target_resource().manager.filters
+        return [filters[field][filter_name[1:]].convert(filter_params)
+            for field, filter_params in value.items() for filter_name, filter_obj in filter_params.items()]
+
     def op(self, a, b):
+        import ipdb;ipdb.set_trace()
+        print('===========================')
         raise NotImplemented()
 
 

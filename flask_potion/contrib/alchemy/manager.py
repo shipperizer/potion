@@ -138,7 +138,14 @@ class SQLAlchemyManager(RelationalManager):
         return self.model.query
 
     def _query_filter(self, query, expression):
+        query = self._join_tables(query, expression)
         return query.filter(expression)
+
+    def _join_tables(self, query, expression):
+        for table in expression._from_objects:
+            if self.model.__table__ != table:
+                query = query.join(table)
+        return query
 
     def _expression_for_join(self, attribute, expression):
         relationship = getattr(self.model, attribute)

@@ -221,6 +221,9 @@ class DateBetweenFilter(BaseFilter):
 
 
 class AttrFilter(BaseFilter):
+    """
+    TODO support EqualFilter with no name passed
+    """
     def get_target_resource(self):
         if isinstance(self.field, ToOne):
             return self.field.target
@@ -254,8 +257,6 @@ class AttrFilter(BaseFilter):
             for field, filter_params in value.items() for filter_name, filter_obj in filter_params.items()]
 
     def op(self, a, b):
-        import ipdb;ipdb.set_trace()
-        print('===========================')
         raise NotImplemented()
 
 

@@ -1,4 +1,4 @@
-from sqlalchemy import and_, inspect
+from sqlalchemy import and_
 from flask_potion import fields
 import flask_potion.filters as filters
 

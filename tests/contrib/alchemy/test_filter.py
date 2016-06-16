@@ -354,6 +354,17 @@ class FilterTestCase(BaseTestCase):
         self.assertEqual(3, len(response.json))
 
 
+    def test_attr_filter(self):
+        response = self.client.get('/thing?where={"belongs_to": {"$attr": {"age": 21}}}')
+        self.assert200(response)
+        self.assertEqual(1, len(response.json))
+        self.assertEqual('E', len(response.json['name']))
+
+        response = self.client.get('/thing?where={"belongs_to": {"$attr": {"age": 0}}}')
+        self.assert200(response)
+        self.assertEqual(0, len(response.json))
+
+
     def test_filter_and_sort_uri(self):
         for thing in [
             {"name": "A thing"},

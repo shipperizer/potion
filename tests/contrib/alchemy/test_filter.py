@@ -56,7 +56,7 @@ class FilterTestCase(BaseTestCase):
 
         class ThingResource(ModelResource):
             class Schema:
-                belongs_to = fields.ToOne('user', nullable=True)
+                belongs_to = fields.ToOne(UserResource, nullable=True)
 
             class Meta:
                 model = Thing

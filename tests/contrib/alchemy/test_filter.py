@@ -81,7 +81,7 @@ class FilterTestCase(BaseTestCase):
 
         class UseToManyResource(ModelResource):
             class Schema:
-                things = fields.ToMany('thing')
+                things = fields.ToMany(ThingResource)
 
             class Meta:
                 name = 'user-to-many'
